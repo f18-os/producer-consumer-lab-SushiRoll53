@@ -7,8 +7,10 @@ import base64
 import queue
 
 queue =[]
+gqueue = []
 MAX_NUM = 10
 condition = Condition()
+condition2 = Condition()
 
 class Producer(Thread):
     def run(self):
@@ -21,7 +23,7 @@ class Producer(Thread):
         # read first image
         success,image = vidcap.read()
         
-        while success:
+        while True:
             condition.acquire()
             if len(queue) == MAX_NUM:
                 print ("Queue full, producer is waiting")
@@ -29,15 +31,13 @@ class Producer(Thread):
                 print ("Space in queue, Consumer notified the producer")
 
             success, jpgImage = cv2.imencode('.jpg', image)
-
+            #print(jpgImage)
             jpgAsText = base64.b64encode(jpgImage)
 
             queue.append(jpgAsText)
 
             success,image = vidcap.read()
                 
-            # num = random.choice(nums)
-            # queue.append(num)
             print('Reading frame {} {}'.format(count, success))
             count += 1
             condition.notify()
@@ -47,23 +47,23 @@ class Producer(Thread):
 
 class Consumer(Thread):
     def run(self):
-        global queue
+        global gqueue
         count = 0
         while True:
-            condition.acquire()
-            if not queue:
+            condition2.acquire()
+            if not gqueue:
                 print ("Nothing in queue, consumer is waiting")
-                condition.wait()
+                condition2.wait()
                 print ("Producer added something to queue and notified the consumer")
 
-            frameAsText = queue.pop(0)
-            
+            frameAsText = gqueue.pop(0)
+
             jpgRawImage = base64.b64decode(frameAsText)
-
+     
             jpgImage = np.asarray(bytearray(jpgRawImage), dtype=np.uint8)
-
+     
             img = cv2.imdecode( jpgImage ,cv2.IMREAD_UNCHANGED)
-
+        
             print("Displaying frame {}".format(count))
 
             cv2.imshow("Video", img)
@@ -71,14 +71,56 @@ class Consumer(Thread):
                 break
 
             count += 1
-            condition.notify()
-            condition.release()
+            condition2.notify()
+            condition2.release()
             time.sleep(random.random())
 
         print("Finished displaying all frames")
         # cleanup the windows
         cv2.destroyAllWindows()
 
+
+class ConsumerProducer(Thread):
+    def run(self):
+        global gqueue, queue
+        count = 0
+        while True:
+            condition.acquire()
+            if not queue:
+                print ("Nothing in queue, consumer2 is waiting")
+                condition.wait()
+                print ("Producer added something to queue and notified the consumer")
+            frameAsText = queue.pop(0)
+            condition.notify()
+            condition.release()
+            time.sleep(random.random())
+
+            condition2.acquire()
+            if len(gqueue) == MAX_NUM:
+                print ("Queue full, producer2 is waiting")
+                condition.wait()
+                print ("Space in queue, Consumer notified the producer")
+
+                
+            jpgRawImage = base64.b64decode(frameAsText)
+
+            jpgImage = np.asarray(bytearray(jpgRawImage), dtype=np.uint8)
+            
+            img = cv2.imdecode( jpgImage ,cv2.IMREAD_UNCHANGED)
+            
+            grayImage = cv2.cvtColor(img, cv2.IMREAD_GRAYSCALE)
+
+            grayFrame = base64.b64encode(grayImage)
+            
+            print("Converting frame {}".format(count))
+
+            gqueue.append(grayFrame)
+
+            
+            count += 1
+            condition2.notify()
+            condition2.release()
+            time.sleep(random.random())
         
 
 fileName = 'clip.mp4'
@@ -86,5 +128,5 @@ fileName = 'clip.mp4'
 #queue = queue.Queue()
 
 Producer().start()
-
+ConsumerProducer().start()
 Consumer().start()
