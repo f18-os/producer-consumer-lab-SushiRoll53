@@ -1,3 +1,15 @@
+# LAB
+The `ProducerConsumer.py` file contains three functions
+* Producer
+  * That reads from `clip.mp4` and store it on a queue
+* ConsumerProducer
+  * Consumes from the queue of the first producer and produce the same frames but in grayscale
+* Consumer
+  * Consumes from the grayscale queue and display them
+  
+### Note:
+* When I test the code in the virtual machine the displays were not running at 24fps, but when I ran them on my machine they were running much more smoothly.
+
 # Producer Consumer Lab
 
 For this lab you will implement a trivial producer-consumer system using
