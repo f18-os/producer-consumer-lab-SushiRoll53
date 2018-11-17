@@ -5,86 +5,50 @@ import cv2
 import numpy as np
 import base64
 import queue
-
-queue =[]
-MAX_NUM = 10
-condition = Condition()
-
-class Producer(Thread):
-    def run(self):
-        global queue
-        global fileName
-        # Initialize frame count 
-        count = 0
-        # open video file
-        vidcap = cv2.VideoCapture(fileName)
-        # read first image
-        success,image = vidcap.read()
-        
-        while success:
-            condition.acquire()
-            if len(queue) == MAX_NUM:
-                print ("Queue full, producer is waiting")
-                condition.wait()
-                print ("Space in queue, Consumer notified the producer")
-
-            success, jpgImage = cv2.imencode('.jpg', image)
-
-            jpgAsText = base64.b64encode(jpgImage)
-
-            queue.append(jpgAsText)
-
-            success,image = vidcap.read()
-                
-            # num = random.choice(nums)
-            # queue.append(num)
-            print('Reading frame {} {}'.format(count, success))
-            count += 1
-            condition.notify()
-            condition.release()
-            time.sleep(random.random())
+import threading
 
 
-class Consumer(Thread):
-    def run(self):
-        global queue
-        count = 0
-        while True:
-            condition.acquire()
-            if not queue:
-                print ("Nothing in queue, consumer is waiting")
-                condition.wait()
-                print ("Producer added something to queue and notified the consumer")
+# Buffer size
+N = 10
+# Buffer init
+buf = [0] * N
 
-            frameAsText = queue.pop(0)
-            
-            jpgRawImage = base64.b64decode(frameAsText)
 
-            jpgImage = np.asarray(bytearray(jpgRawImage), dtype=np.uint8)
+fill_count = threading.Semaphore(0)
+empty_count = threading.Semaphore(N)
 
-            img = cv2.imdecode( jpgImage ,cv2.IMREAD_UNCHANGED)
 
-            print("Displaying frame {}".format(count))
+def produce():
+    print("One item produced!")
+    return 1
 
-            cv2.imshow("Video", img)
-            if cv2.waitKey(42) and 0xFF == ord("q"):
-                break
 
-            count += 1
-            condition.notify()
-            condition.release()
-            time.sleep(random.random())
+def producer():
+    front = 0
+    while True:
+        x = produce()
+        empty_count.acquire()
+        buf[front] = x
+        fill_count.release()
+        front = (front + 1) % N
 
-        print("Finished displaying all frames")
-        # cleanup the windows
-        cv2.destroyAllWindows()
 
-        
+def consume(y):
+    print("One item consumed!")
 
-fileName = 'clip.mp4'
 
-#queue = queue.Queue()
+def consumer():
+    rear = 0
+    while True:
+        fill_count.acquire()
+        y = buf[rear]
+        empty_count.release()
+        consume(y)
+        rear = (rear + 1) % N
 
-Producer().start()
 
-Consumer().start()
+producer_thread = threading.Thread(target=producer)
+consumer_thread = threading.Thread(target=consumer)
+
+producer_thread.start()
+consumer_thread.start()
