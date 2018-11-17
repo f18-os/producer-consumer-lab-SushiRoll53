@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+
 from threading import Thread, Condition
 import threading
 import time
@@ -21,13 +22,13 @@ class Producer(Thread):
     def run(self):
         global queue
         global fileName
-        # Initialize frame count 
+        # Initialize frame count
         count = 0
         # open video file
         vidcap = cv2.VideoCapture(fileName)
         # read first image
         success,image = vidcap.read()
-        
+
         while True:
             condition.acquire()
             if len(queue) == MAX_NUM:
@@ -42,9 +43,9 @@ class Producer(Thread):
             queue.append(jpgAsText)
             condition.notify()
             condition.release()
-            
+
             success,image = vidcap.read()
-                
+
             print('Reading frame {} {}'.format(count, success))
             count += 1
 
@@ -70,11 +71,11 @@ class Consumer(Thread):
             condition2.release()
 
             jpgRawImage = base64.b64decode(frameAsText)
-     
+
             jpgImage = np.asarray(bytearray(jpgRawImage), dtype=np.uint8)
-     
+
             img = cv2.imdecode( jpgImage ,cv2.IMREAD_UNCHANGED)
-        
+
             print("Displaying frame {}".format(count))
 
             cv2.imshow("Video", img)
@@ -114,22 +115,22 @@ class ConsumerProducer(Thread):
                 condition.wait()
                 print ("Space in queue, Consumer notified the producer")
 
-                
+
             jpgRawImage = base64.b64decode(frameAsText)
 
             jpgImage = np.asarray(bytearray(jpgRawImage), dtype=np.uint8)
-            
+
             img = cv2.imdecode( jpgImage ,cv2.IMREAD_GRAYSCALE)
-            
+
             success, jpgImage = cv2.imencode('.jpg', img)
-            
+
             grayFrame = base64.b64encode(jpgImage)
-            
+
             print("Converting frame {}".format(count))
 
             gqueue.append(grayFrame)
 
-            
+
             count += 1
             condition2.notify()
             condition2.release()
