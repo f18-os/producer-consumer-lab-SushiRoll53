@@ -1,4 +1,5 @@
 from threading import Thread, Condition
+import threading
 import time
 import random
 import cv2
@@ -13,6 +14,9 @@ condition = Condition()
 condition2 = Condition()
 
 class Producer(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.start()
     def run(self):
         global queue
         global fileName
@@ -35,17 +39,21 @@ class Producer(Thread):
             jpgAsText = base64.b64encode(jpgImage)
 
             queue.append(jpgAsText)
-
+            condition.notify()
+            condition.release()
+            
             success,image = vidcap.read()
                 
             print('Reading frame {} {}'.format(count, success))
             count += 1
-            condition.notify()
-            condition.release()
+
             time.sleep(random.random())
 
 
 class Consumer(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.start()
     def run(self):
         global gqueue
         count = 0
@@ -57,6 +65,8 @@ class Consumer(Thread):
                 print ("Producer added something to queue and notified the consumer")
 
             frameAsText = gqueue.pop(0)
+            condition2.notify()
+            condition2.release()
 
             jpgRawImage = base64.b64decode(frameAsText)
      
@@ -71,8 +81,7 @@ class Consumer(Thread):
                 break
 
             count += 1
-            condition2.notify()
-            condition2.release()
+
             time.sleep(random.random())
 
         print("Finished displaying all frames")
@@ -81,6 +90,9 @@ class Consumer(Thread):
 
 
 class ConsumerProducer(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.start()
     def run(self):
         global gqueue, queue
         count = 0
@@ -121,12 +133,11 @@ class ConsumerProducer(Thread):
             condition2.notify()
             condition2.release()
             time.sleep(random.random())
-        
+
+
 
 fileName = 'clip.mp4'
 
-#queue = queue.Queue()
-
-Producer().start()
-ConsumerProducer().start()
-Consumer().start()
+Producer()
+ConsumerProducer()
+Consumer()
