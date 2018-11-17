@@ -106,11 +106,11 @@ class ConsumerProducer(Thread):
 
             jpgImage = np.asarray(bytearray(jpgRawImage), dtype=np.uint8)
             
-            img = cv2.imdecode( jpgImage ,cv2.IMREAD_UNCHANGED)
+            img = cv2.imdecode( jpgImage ,cv2.IMREAD_GRAYSCALE)
             
-            grayImage = cv2.cvtColor(img, cv2.IMREAD_GRAYSCALE)
-
-            grayFrame = base64.b64encode(grayImage)
+            success, jpgImage = cv2.imencode('.jpg', img)
+            
+            grayFrame = base64.b64encode(jpgImage)
             
             print("Converting frame {}".format(count))
 
