@@ -7,10 +7,10 @@ import random
 import cv2
 import numpy as np
 import base64
-import queue
+from queue import Queue
 
-queue = queue.Queue(10)
-gqueue = queue.Queue(10)
+queue = Queue(10)
+gqueue = Queue(10)
 MAX_NUM = 10
 condition = Condition()
 condition2 = Condition()
