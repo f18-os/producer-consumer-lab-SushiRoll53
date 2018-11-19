@@ -9,8 +9,8 @@ import numpy as np
 import base64
 import queue
 
-queue =[]
-gqueue = []
+queue = queue.Queue(10)
+gqueue = queue.Queue(10)
 MAX_NUM = 10
 condition = Condition()
 condition2 = Condition()
@@ -31,7 +31,7 @@ class Producer(Thread):
 
         while True:
             condition.acquire()
-            if len(queue) == MAX_NUM:
+            if queue.qsize() == MAX_NUM:
                 print ("Queue full, producer is waiting")
                 condition.wait()
                 print ("Space in queue, Consumer notified the producer")
@@ -40,7 +40,7 @@ class Producer(Thread):
             #print(jpgImage)
             jpgAsText = base64.b64encode(jpgImage)
 
-            queue.append(jpgAsText)
+            queue.put(jpgAsText)
             condition.notify()
             condition.release()
 
@@ -61,12 +61,12 @@ class Consumer(Thread):
         count = 0
         while True:
             condition2.acquire()
-            if not gqueue:
+            if gqueue.empty():
                 print ("Nothing in queue, consumer is waiting")
                 condition2.wait()
                 print ("Producer added something to queue and notified the consumer")
 
-            frameAsText = gqueue.pop(0)
+            frameAsText = gqueue.get()
             condition2.notify()
             condition2.release()
 
@@ -100,17 +100,17 @@ class ConsumerProducer(Thread):
         count = 0
         while True:
             condition.acquire()
-            if not queue:
+            if queue.empty():
                 print ("Nothing in queue, consumer2 is waiting")
                 condition.wait()
                 print ("Producer added something to queue and notified the consumer")
-            frameAsText = queue.pop(0)
+            frameAsText = queue.get()
             condition.notify()
             condition.release()
             time.sleep(random.random())
 
             condition2.acquire()
-            if len(gqueue) == MAX_NUM:
+            if gqueue.qsize() == MAX_NUM:
                 print ("Queue full, producer2 is waiting")
                 condition.wait()
                 print ("Space in queue, Consumer notified the producer")
@@ -128,7 +128,7 @@ class ConsumerProducer(Thread):
 
             print("Converting frame {}".format(count))
 
-            gqueue.append(grayFrame)
+            gqueue.put(grayFrame)
 
 
             count += 1
