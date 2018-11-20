@@ -14,8 +14,9 @@ gqueue = Queue(10)
 MAX_NUM = 10
 condition = Condition()
 condition2 = Condition()
+fileName = 'clip.mp4'
 
-class Producer(Thread):
+class Producer(threading.Thread):
     def __init__(self):
         Thread.__init__(self)
         self.start()
@@ -49,10 +50,10 @@ class Producer(Thread):
             print('Reading frame {} {}'.format(count, success))
             count += 1
 
-            time.sleep(random.random())
+            time.sleep(random.uniform(0.03,0.06))
 
 
-class Consumer(Thread):
+class Consumer(threading.Thread):
     def __init__(self):
         Thread.__init__(self)
         self.start()
@@ -84,14 +85,14 @@ class Consumer(Thread):
 
             count += 1
 
-            time.sleep(random.random())
+            time.sleep(random.uniform(0.03,0.06))
 
         print("Finished displaying all frames")
         # cleanup the windows
         cv2.destroyAllWindows()
 
 
-class ConsumerProducer(Thread):
+class ConsumerProducer(threading.Thread):
     def __init__(self):
         Thread.__init__(self)
         self.start()
@@ -107,7 +108,7 @@ class ConsumerProducer(Thread):
             frameAsText = queue.get()
             condition.notify()
             condition.release()
-            time.sleep(random.random())
+            time.sleep(random.uniform(0.03,0.06))
 
             condition2.acquire()
             if gqueue.qsize() == MAX_NUM:
@@ -134,12 +135,14 @@ class ConsumerProducer(Thread):
             count += 1
             condition2.notify()
             condition2.release()
-            time.sleep(random.random())
+            time.sleep(random.uniform(0.03,0.06))
 
 
 
-fileName = 'clip.mp4'
-
-Producer()
-ConsumerProducer()
-Consumer()
+def main():
+    Producer()
+    ConsumerProducer()
+    Consumer()
+    queue.join()
+    gqueue.join()
+main()
