@@ -8,68 +8,70 @@ import cv2
 import numpy as np
 import base64
 from queue import Queue
-
-queue = Queue(10)
-gqueue = Queue(10)
+# Max items a queue can have
 MAX_NUM = 10
-condition = Condition()
-condition2 = Condition()
-fileName = 'clip.mp4'
+
 
 class Producer(threading.Thread):
-    def __init__(self):
+    def __init__(self, queue, fileName, condition):
         Thread.__init__(self)
+        self.queue = queue
+        self.fileName = fileName
+        self.condition = condition
         self.start()
     def run(self):
-        global queue
-        global fileName
         # Initialize frame count
         count = 0
         # open video file
-        vidcap = cv2.VideoCapture(fileName)
+        vidcap = cv2.VideoCapture(self.fileName)
         # read first image
         success,image = vidcap.read()
 
         while True:
-            condition.acquire()
-            if queue.qsize() == MAX_NUM:
+            # acquire() is the "lock"
+            self.condition.acquire()
+            if self.queue.qsize() == MAX_NUM:
                 print ("Queue full, producer is waiting")
-                condition.wait()
+                self.condition.wait()
                 print ("Space in queue, Consumer notified the producer")
 
             success, jpgImage = cv2.imencode('.jpg', image)
             #print(jpgImage)
             jpgAsText = base64.b64encode(jpgImage)
 
-            queue.put(jpgAsText)
-            condition.notify()
-            condition.release()
+            self.queue.put(jpgAsText)
+            self.condition.notify()
+            # To release the acquire / "lock'
+            self.condition.release()
 
             success,image = vidcap.read()
 
             print('Reading frame {} {}'.format(count, success))
             count += 1
-
+            # Sleep a random time in ms
             time.sleep(random.uniform(0.03,0.06))
 
 
 class Consumer(threading.Thread):
-    def __init__(self):
+    def __init__(self, gqueue, condition2):
         Thread.__init__(self)
+        self.gqueue = gqueue
+        self.condition2 = condition2
         self.start()
     def run(self):
-        global gqueue
         count = 0
         while True:
-            condition2.acquire()
-            if gqueue.empty():
+            # acquire() is the "lock"
+            self.condition2.acquire()
+            if self.gqueue.empty():
                 print ("Nothing in queue, consumer is waiting")
-                condition2.wait()
+                self.condition2.wait()
                 print ("Producer added something to queue and notified the consumer")
 
-            frameAsText = gqueue.get()
-            condition2.notify()
-            condition2.release()
+            frameAsText = self.gqueue.get()
+            self.condition2.notify()
+            # To release the acquire / "lock'
+            self.condition2.release()
 
             jpgRawImage = base64.b64decode(frameAsText)
 
@@ -84,7 +86,7 @@ class Consumer(threading.Thread):
                 break
 
             count += 1
-
+            # Sleep a random time in ms
             time.sleep(random.uniform(0.03,0.06))
 
         print("Finished displaying all frames")
@@ -93,27 +95,34 @@ class Consumer(threading.Thread):
 
 
 class ConsumerProducer(threading.Thread):
-    def __init__(self):
+    def __init__(self,queue,gqueue,condition,condition2):
         Thread.__init__(self)
+        self.queue = queue
+        self.gqueue = gqueue
+        self.condition = condition
+        self.condition2 = condition2
         self.start()
     def run(self):
-        global gqueue, queue
         count = 0
         while True:
-            condition.acquire()
-            if queue.empty():
+            # acquire() is the "lock"
+            self.condition.acquire()
+            if self.queue.empty():
                 print ("Nothing in queue, consumer2 is waiting")
-                condition.wait()
+                self.condition.wait()
                 print ("Producer added something to queue and notified the consumer")
-            frameAsText = queue.get()
-            condition.notify()
-            condition.release()
+            frameAsText = self.queue.get()
+            self.condition.notify()
+            # To release the acquire / "lock'
+            self.condition.release()
+            # Sleep a random time in ms
             time.sleep(random.uniform(0.03,0.06))
 
-            condition2.acquire()
-            if gqueue.qsize() == MAX_NUM:
+            # acquire() is the "lock"
+            self.condition2.acquire()
+            if self.gqueue.qsize() == MAX_NUM:
                 print ("Queue full, producer2 is waiting")
-                condition.wait()
+                self.condition.wait()
                 print ("Space in queue, Consumer notified the producer")
 
 
@@ -129,20 +138,32 @@ class ConsumerProducer(threading.Thread):
 
             print("Converting frame {}".format(count))
 
-            gqueue.put(grayFrame)
+            self.gqueue.put(grayFrame)
 
 
             count += 1
-            condition2.notify()
-            condition2.release()
+            self.condition2.notify()
+            # To release the acquire / "lock'
+            self.condition2.release()
+            # Sleep a random time in ms
             time.sleep(random.uniform(0.03,0.06))
 
 
 
 def main():
-    Producer()
-    ConsumerProducer()
-    Consumer()
+    # Colored queue
+    queue = Queue(MAX_NUM)
+    # Grayed queue
+    gqueue = Queue(MAX_NUM)
+    # I used condition for semaphores
+    condition = Condition()
+    condition2 = Condition()
+    # Name of the clip
+    fileName = 'clip.mp4'
+    # Initialize and start threads
+    Producer(queue,fileName,condition)
+    ConsumerProducer(queue,gqueue,condition,condition2)
+    Consumer(gqueue,condition2)
     queue.join()
     gqueue.join()
 main()
